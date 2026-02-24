@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import L from "leaflet";
 
 export default function MapTest() {
   const containerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<unknown>(null);
   const [logs, setLogs] = useState<string[]>(["starting..."]);
   const addLog = (msg: string) => {
     console.log("[MapTest]", msg);
@@ -15,6 +15,10 @@ export default function MapTest() {
     const el = containerRef.current;
     if (!el) { addLog("ERROR: no container ref"); return; }
     addLog(`Container size: ${el.offsetWidth}x${el.offsetHeight}`);
+
+    // Dynamic import to avoid SSR "window is not defined"
+    import("leaflet").then((leafletMod) => {
+    const L = leafletMod.default;
 
     // Fix Leaflet default icon paths (common Next.js issue)
     delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)["_getIconUrl"];
@@ -50,7 +54,10 @@ export default function MapTest() {
       })
       .catch((err) => addLog(`ERROR: ${err}`));
 
-    return () => { map.remove(); };
+    mapRef.current = map;
+    }); // end dynamic import
+
+    return () => { (mapRef.current as { remove: () => void } | null)?.remove(); };
   }, []);
 
   return (
